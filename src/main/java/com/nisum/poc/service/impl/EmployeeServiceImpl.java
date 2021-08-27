@@ -1,7 +1,6 @@
 package com.nisum.poc.service.impl;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 import com.nisum.poc.dto.EmployeeDto;
@@ -20,9 +19,6 @@ public class EmployeeServiceImpl implements EmployeeService {
 	private EmpMongoRepository empMongoRepository;
 	@Autowired
 	private EmployeeMapper employeeMapper;
-
-	@Autowired
-	private KafkaTemplate<String,Object> kafkaTemplate;
 
 	@Override
 	public Mono<EmployeeDto> findByEmpId(Long empId) {
@@ -51,19 +47,14 @@ public class EmployeeServiceImpl implements EmployeeService {
 	public Mono<EmployeeDto> save(EmployeeDto employeeDto) {
 		
 		Employee employee = employeeMapper.toEmployee(employeeDto);
-		return empMongoRepository.save(employee)
-				.map(e -> {
-					EmployeeDto employeeDto1 = employeeMapper.toEmployeeDto(e);
-					kafkaTemplate.send("employeetopic","User Created with ID:: "+employeeDto1.getEmpId());
-					kafkaTemplate.send("employee",employeeDto1);
-					return employeeDto1;
-				}).map(e -> (EmployeeDto) e);
+		return empMongoRepository.save(employee).map(e -> employeeMapper.toEmployeeDto(e)).map(e -> (EmployeeDto) e);
 	}
 
 	@Override
 	public Flux<EmployeeDto> findBySalary(Double sal) {
 		Flux<Employee> stream = empMongoRepository.findBySalary(sal);
 		Flux<EmployeeDto> empList = stream.map(e -> employeeMapper.toEmployeeDto(e)).map(e -> (EmployeeDto) e);
+
 		return empList;
 	}
 
